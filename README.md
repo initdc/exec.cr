@@ -9,8 +9,8 @@
    ```yaml
    dependencies:
      exec:
-       github: initdc/exec
-       version: 0.0.1
+       github: initdc/exec.cr
+       version: 0.2.0
    ```
 
 2. Run `shards install`

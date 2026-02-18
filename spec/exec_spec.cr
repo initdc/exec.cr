@@ -22,6 +22,33 @@ describe Exec do
   end
 
   it "get Linux\n" do
+    Exec.run("uname").should eq "Linux\n"
+  end
+
+  it "looks like ruby Open3 when bad" do
+    r = Exec.run("echo good && echo bad >&2 && exit 1")
+    case r
+    when String
+      r.chomp.should eq "good"
+    else
+      o, e, s = r
+      o.chomp.should eq "good"
+      e.chomp.should eq "bad"
+      s.exit_code.should eq 1
+    end
+  end
+
+  it "looks like ruby IO.popen" do
+    r = Exec.run("bash") do |process|
+      process.input.puts "uname"
+      process.input.close
+      process.output.gets_to_end
+    end
+
+    r.should eq "Linux\n"
+  end
+
+  it "get Linux\n" do
     Exec.output("uname", false).should eq "Linux\n"
   end
 

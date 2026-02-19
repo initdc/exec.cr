@@ -25,6 +25,10 @@ describe Exec do
     Exec.run("uname").should eq "Linux\n"
   end
 
+  it "print once Linux\n" do
+    Exec.run("uname", output: STDOUT).should eq "Linux\n"
+  end
+
   it "looks like ruby Open3 when bad" do
     r = Exec.run("echo good && echo bad >&2 && exit 1")
     case r

@@ -10,7 +10,7 @@
    dependencies:
      exec:
        github: initdc/exec.cr
-       version: 0.2.0
+       version: 0.2.1
    ```
 
 2. Run `shards install`

@@ -35,10 +35,9 @@ describe Exec do
     when String
       r.chomp.should eq "good"
     else
-      o, e, s = r
-      o.chomp.should eq "good"
-      e.chomp.should eq "bad"
-      s.exit_code.should eq 1
+      r.stdout.chomp.should eq "good"
+      r.stderr.chomp.should eq "bad"
+      r.status.exit_code.should eq 1
     end
   end
 

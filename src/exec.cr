@@ -1,31 +1,24 @@
 class Exec < Process
-  VERSION = "0.2.1"
+  VERSION = "0.2.2"
 
-  class IO
-    class MultiWriter < ::IO::MultiWriter
-      alias IO = ::IO | ::IO::FileDescriptor | ::String::Builder
-
-      def read(slice : Bytes) : NoReturn
-        raise ::IO::Error.new("Can't read from IO::MultiWriter")
-      end
-    end
-  end
+  # https://github.com/crystal-lang/crystal/blob/1.19.1/src/compiler/crystal/macros/macros.cr#L68
+  record Err, stdout : String, stderr : String, status : Process::Status
 
   def self.run(command : String, args = nil, env : Env = nil, clear_env : Bool = false, shell : Bool = true,
-               input : Stdio = Redirect::Inherit, output : Stdio = Redirect::Inherit, error : Stdio = Redirect::Inherit, chdir : Path | String? = nil) : String | {String, String, Process::Status}
+               input : Stdio = Redirect::Inherit, output : Stdio = Redirect::Inherit, error : Stdio = Redirect::Inherit, chdir : Path | String? = nil) : String | Err
     output_strio = String::Builder.new
     error_strio = String::Builder.new
 
     output_writer = if output.is_a?(Redirect)
-                      output == Redirect::Close ? output : Exec::IO::MultiWriter.new(STDOUT, output_strio)
+                      output == Redirect::Close ? output : IO::MultiWriter.new(STDOUT, output_strio)
                     else
-                      output != STDOUT ? Exec::IO::MultiWriter.new(STDOUT, output, output_strio) : Exec::IO::MultiWriter.new(STDOUT, output_strio)
+                      output != STDOUT ? IO::MultiWriter.new(STDOUT, output, output_strio) : IO::MultiWriter.new(STDOUT, output_strio)
                     end
 
     error_writer = if error.is_a?(Redirect)
-                     error == Redirect::Close ? error : Exec::IO::MultiWriter.new(STDERR, error_strio)
+                     error == Redirect::Close ? error : IO::MultiWriter.new(STDERR, error_strio)
                    else
-                     error != STDERR ? Exec::IO::MultiWriter.new(STDERR, error, error_strio) : Exec::IO::MultiWriter.new(STDERR, error_strio)
+                     error != STDERR ? IO::MultiWriter.new(STDERR, error, error_strio) : IO::MultiWriter.new(STDERR, error_strio)
                    end
 
     status = new(command, args, env, clear_env, shell, input, output_writer, error_writer, chdir).wait
@@ -40,7 +33,7 @@ class Exec < Process
     when true
       output_strio.to_s
     else
-      {output_strio.to_s, error_strio.to_s, status}
+      Err.new(output_strio.to_s, error_strio.to_s, status)
     end
   end
 

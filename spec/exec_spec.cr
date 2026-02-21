@@ -5,6 +5,17 @@ describe Exec do
     Exec.run("sudo apt update")
   end
 
+  it "not print but also get stdout" do
+    r = Exec.run("uname", output: File.open(File::NULL, "w"))
+    r.success?.should be_true
+    r.stdout.should eq "Linux\n"
+
+    r = Exec.run("unamea", output: File.open(File::NULL, "w"))
+    r.success?.should be_false
+    r.stdout.should eq ""
+    r.exit_code.should eq 127
+  end
+
   it "return 0" do
     Exec.code("uname").should eq 0
   end
@@ -27,7 +38,9 @@ describe Exec do
 
   it "log to file" do
     tempfile = File.tempfile("test_", ".log")
-    Exec.run("uname", output: File.open(tempfile.path, "a+"))
+    File.open(tempfile.path, "a+") do |io|
+      Exec.run("uname", output: io)
+    end
 
     tempfile.gets_to_end.should eq "Linux\n"
     tempfile.delete

@@ -1,11 +1,34 @@
 class Exec < Process
-  VERSION = "0.1.1"
+  VERSION = "0.1.2"
+
+  class Status < ::Process::Status
+    getter stdout : String
+    getter stderr : String
+
+    {% if flag?(:win32) %}
+      # :nodoc:
+      def initialize(@exit_status : UInt32, @stdout : String, @stderr : String)
+      end
+    {% else %}
+      # :nodoc:
+      def initialize(@exit_status : Int32, @stdout : String, @stderr : String)
+      end
+    {% end %}
+  end
 
   def self.run(command : String, args = nil, env : Env = nil, clear_env : Bool = false, shell : Bool = true,
-               input : Stdio = Redirect::Inherit, output : Stdio = Redirect::Inherit, error : Stdio = Redirect::Inherit, chdir : Path | String? = nil) : Process::Status
-    status = new(command, args, env, clear_env, shell, input, output, error, chdir).wait
+               input : IO = STDIN, output : IO | Array(IO) = STDOUT, error : IO | Array(IO) = STDERR, chdir : Path | String? = nil) : Status
+    output_strio = String::Builder.new
+    error_strio = String::Builder.new
+    output_writer = output.is_a?(Array) ? IO::MultiWriter.new(output + output_strio) : IO::MultiWriter.new(output, output_strio)
+    error_writer = error.is_a?(Array) ? IO::MultiWriter.new(error + error_strio) : IO::MultiWriter.new(error, error_strio)
+
+    status = new(command, args, env, clear_env, shell, input, output_writer, error_writer, chdir).wait
     $? = status
-    status
+
+    output_writer.close
+    error_writer.close
+    Status.new(status.@exit_status, output_strio.to_s, error_strio.to_s)
   end
 
   def self.code(command : String, args = nil, env : Env = nil, clear_env : Bool = false, shell : Bool = true,

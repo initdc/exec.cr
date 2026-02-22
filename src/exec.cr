@@ -1,40 +1,34 @@
 class Exec < Process
-  VERSION = "0.2.2"
+  VERSION = "0.2.3"
 
-  # https://github.com/crystal-lang/crystal/blob/1.19.1/src/compiler/crystal/macros/macros.cr#L68
-  record Err, stdout : String, stderr : String, status : Process::Status
+  class Err < ::Process::Status
+    getter stdout : String
+    getter stderr : String
+
+    {% if flag?(:win32) %}
+      # :nodoc:
+      def initialize(@exit_status : UInt32, @stdout : String, @stderr : String)
+      end
+    {% else %}
+      # :nodoc:
+      def initialize(@exit_status : Int32, @stdout : String, @stderr : String)
+      end
+    {% end %}
+  end
 
   def self.run(command : String, args = nil, env : Env = nil, clear_env : Bool = false, shell : Bool = true,
-               input : Stdio = Redirect::Inherit, output : Stdio = Redirect::Inherit, error : Stdio = Redirect::Inherit, chdir : Path | String? = nil) : String | Err
+               input : IO = STDIN, output : IO | Array(IO) = STDOUT, error : IO | Array(IO) = STDERR, chdir : Path | String? = nil) : String | Err
     output_strio = String::Builder.new
     error_strio = String::Builder.new
-
-    output_writer = if output.is_a?(Redirect)
-                      output == Redirect::Close ? output : IO::MultiWriter.new(STDOUT, output_strio)
-                    else
-                      output != STDOUT ? IO::MultiWriter.new(STDOUT, output, output_strio) : IO::MultiWriter.new(STDOUT, output_strio)
-                    end
-
-    error_writer = if error.is_a?(Redirect)
-                     error == Redirect::Close ? error : IO::MultiWriter.new(STDERR, error_strio)
-                   else
-                     error != STDERR ? IO::MultiWriter.new(STDERR, error, error_strio) : IO::MultiWriter.new(STDERR, error_strio)
-                   end
+    output_writer = output.is_a?(Array) ? IO::MultiWriter.new(output + output_strio) : IO::MultiWriter.new(output, output_strio)
+    error_writer = error.is_a?(Array) ? IO::MultiWriter.new(error + error_strio) : IO::MultiWriter.new(error, error_strio)
 
     status = new(command, args, env, clear_env, shell, input, output_writer, error_writer, chdir).wait
     $? = status
 
-    output.close unless output.is_a?(Redirect) || output == STDOUT
-    error.close unless error.is_a?(Redirect) || error == STDERR
-    output_strio.close
-    error_strio.close
-
-    case status.success?
-    when true
-      output_strio.to_s
-    else
-      Err.new(output_strio.to_s, error_strio.to_s, status)
-    end
+    output_writer.close
+    error_writer.close
+    status.success? ? output_strio.to_s : Err.new(status.@exit_status, output_strio.to_s, error_strio.to_s)
   end
 
   def self.code(command : String, args = nil, env : Env = nil, clear_env : Bool = false, shell : Bool = true,

@@ -7,11 +7,11 @@ describe Exec do
 
   it "not print but also get stdout" do
     r = Exec.run("uname", output: File.open(File::NULL, "w"))
-    r.success?.should be_true
+    r.ok?.should be_true
     r.stdout.should eq "Linux\n"
 
     r = Exec.run("unamea", output: File.open(File::NULL, "w"))
-    r.success?.should be_false
+    r.ok?.should be_false
     r.stdout.should eq ""
     r.exit_code.should eq 127
   end

@@ -1,5 +1,5 @@
 class Exec < Process
-  VERSION = "0.1.2"
+  VERSION = "0.1.3"
 
   class Status < ::Process::Status
     getter stdout : String
@@ -14,6 +14,13 @@ class Exec < Process
       def initialize(@exit_status : Int32, @stdout : String, @stderr : String)
       end
     {% end %}
+
+    def ok? : Bool
+      exit_code? == 0
+    end
+
+    private def success?
+    end
   end
 
   def self.run(command : String, args = nil, env : Env = nil, clear_env : Bool = false, shell : Bool = true,
